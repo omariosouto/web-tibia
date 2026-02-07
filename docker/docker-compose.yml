@@ -12,10 +12,34 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tibia -d webtibia"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tibia} -d ${POSTGRES_DB:-webtibia}"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: dev
+    container_name: web-tibia-app
+    ports:
+      - "3001:3001"
+      - "5173:5173"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tibia}:${POSTGRES_PASSWORD:-tibia123}@postgres:5432/${POSTGRES_DB:-webtibia}
+      PORT: 3001
+      NODE_ENV: development
+      VITE_SERVER_URL: http://localhost:3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../packages/server/src:/app/packages/server/src
+      - ../packages/client/src:/app/packages/client/src
+      - ../packages/shared/src:/app/packages/shared/src
+    profiles:
+      - full
 
 volumes:
   postgres_data:
