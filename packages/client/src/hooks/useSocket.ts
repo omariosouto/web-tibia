@@ -21,8 +21,10 @@ export function useSocket() {
     addPlayer,
     removePlayer,
     updatePlayer,
+    updateMonster,
     setConnected,
     setInGame,
+    setSelectedTarget,
   } = useGameStore();
 
   useEffect(() => {
@@ -72,6 +74,31 @@ export function useSocket() {
       setMonsters(state.monsters);
     });
 
+    socket.on('combat:damage', (event) => {
+      console.log('Damage dealt:', event);
+      updateMonster(event.targetId, {
+        health: event.targetHealth,
+      });
+    });
+
+    socket.on('monster:died', ({ monsterId }) => {
+      console.log('Monster died:', monsterId);
+      updateMonster(monsterId, { isAlive: false, health: 0 });
+      // Deselect if this was our target
+      if (useGameStore.getState().selectedTargetId === monsterId) {
+        setSelectedTarget(null);
+      }
+    });
+
+    socket.on('monster:respawn', (monster) => {
+      console.log('Monster respawned:', monster.name);
+      // Replace the monster in the list with fresh state
+      const currentMonsters = useGameStore.getState().monsters;
+      setMonsters(
+        currentMonsters.map((m) => (m.id === monster.id ? monster : m))
+      );
+    });
+
     socket.on('error', (message) => {
       console.error('Socket error:', message);
     });
@@ -92,5 +119,9 @@ export function useSocket() {
     });
   }, []);
 
-  return { joinGame, move, socket: socketRef.current };
+  const attack = useCallback((targetId: string) => {
+    socketRef.current?.emit('combat:attack', { targetId });
+  }, []);
+
+  return { joinGame, move, attack, socket: socketRef.current };
 }

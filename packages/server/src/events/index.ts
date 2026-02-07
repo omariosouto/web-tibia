@@ -1,6 +1,6 @@
 import type { Server, Socket } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '@web-tibia/shared';
-import { PlayerJoinSchema, PlayerMoveSchema } from '@web-tibia/shared';
+import { PlayerJoinSchema, PlayerMoveSchema, AttackSchema } from '@web-tibia/shared';
 import { GameState } from '../game/GameState';
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -50,6 +50,28 @@ export function setupSocketEvents(io: GameServer, gameState: GameState) {
       }
     });
 
+    // Combat attack
+    socket.on('combat:attack', (data) => {
+      const validated = AttackSchema.safeParse(data);
+      if (!validated.success) {
+        socket.emit('error', 'Invalid attack data');
+        return;
+      }
+
+      const result = gameState.attackMonster(socket.id, validated.data.targetId);
+      if (result.success && result.damageEvent) {
+        // Broadcast damage to all players
+        io.emit('combat:damage', result.damageEvent);
+
+        // If monster died, broadcast that too
+        if (result.monsterDied) {
+          io.emit('monster:died', { monsterId: validated.data.targetId });
+        }
+      } else if (result.error) {
+        socket.emit('error', result.error);
+      }
+    });
+
     // Disconnect
     socket.on('disconnect', () => {
       console.log(`Player disconnected: ${socket.id}`);
@@ -58,6 +80,11 @@ export function setupSocketEvents(io: GameServer, gameState: GameState) {
         io.emit('player:left', player.id);
       }
     });
+  });
+
+  // Set up monster respawn callback
+  gameState.setOnMonsterRespawn((monster) => {
+    io.emit('monster:respawn', monster);
   });
 
   // Game tick - broadcast state periodically (for sync)
