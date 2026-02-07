@@ -49,8 +49,13 @@ Issue no GitHub -> Branch -> Código + Testes -> PR -> Review -> Merge
 
 ```bash
 # Clone o repositório
-git clone <repo-url>
+git clone git@github.com:omariosouto/web-tibia.git
+
+# Navegue até a pasta do projeto
 cd web-tibia
+
+# Copie o arquivo .env.example para .env e ajuste se necessário
+cp .env.example .env
 
 # Instale dependências
 npm install
