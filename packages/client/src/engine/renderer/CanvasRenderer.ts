@@ -1,5 +1,5 @@
 import { TILE_SIZE } from '@web-tibia/shared';
-import type { MapData, PlayerState } from '@web-tibia/shared';
+import type { MapData, PlayerState, MonsterState } from '@web-tibia/shared';
 import { SpriteManager } from './SpriteManager';
 import { Camera } from './Camera';
 
@@ -18,6 +18,13 @@ const DIRECTION_COLORS: Record<string, string> = {
   south: '#4ecdc4',
   east: '#ffe66d',
   west: '#95e1d3',
+};
+
+// Monster type colors (by typeId)
+const MONSTER_COLORS: Record<number, string> = {
+  1: '#d32f2f', // Rat - red
+  2: '#388e3c', // Snake - green
+  3: '#7b1fa2', // Spider - purple
 };
 
 export class CanvasRenderer {
@@ -42,7 +49,9 @@ export class CanvasRenderer {
   render(
     mapData: MapData | null,
     players: PlayerState[],
-    localPlayerId: string | null
+    monsters: MonsterState[],
+    localPlayerId: string | null,
+    selectedTargetId: string | null
   ): void {
     // Clear canvas
     this.ctx.fillStyle = '#1a1a2e';
@@ -58,7 +67,7 @@ export class CanvasRenderer {
 
     // Render layers
     this.renderGround(mapData);
-    this.renderPlayers(players, localPlayerId);
+    this.renderEntities(players, monsters, localPlayerId, selectedTargetId);
   }
 
   private renderGround(mapData: MapData): void {
@@ -92,73 +101,153 @@ export class CanvasRenderer {
     }
   }
 
-  private renderPlayers(players: PlayerState[], localPlayerId: string | null): void {
+  private renderEntities(
+    players: PlayerState[],
+    monsters: MonsterState[],
+    localPlayerId: string | null,
+    selectedTargetId: string | null
+  ): void {
+    // Combine players and monsters for depth sorting
+    type Entity =
+      | { type: 'player'; data: PlayerState }
+      | { type: 'monster'; data: MonsterState };
+
+    const entities: Entity[] = [
+      ...players.map((p) => ({ type: 'player' as const, data: p })),
+      ...monsters.filter((m) => m.isAlive).map((m) => ({ type: 'monster' as const, data: m })),
+    ];
+
     // Sort by Y for depth effect
-    const sorted = [...players].sort((a, b) => a.y - b.y);
+    entities.sort((a, b) => a.data.y - b.data.y);
 
-    for (const player of sorted) {
-      const screenPos = this.camera.worldToScreen(player.x, player.y);
-      const isLocal = player.id === localPlayerId;
+    for (const entity of entities) {
+      if (entity.type === 'player') {
+        this.renderPlayer(entity.data, localPlayerId);
+      } else {
+        this.renderMonster(entity.data, selectedTargetId);
+      }
+    }
+  }
 
-      if (this.usePlaceholders) {
-        // Draw player as colored circle
-        const color = isLocal ? '#ffffff' : DIRECTION_COLORS[player.direction];
-        this.ctx.fillStyle = color;
+  private renderPlayer(player: PlayerState, localPlayerId: string | null): void {
+    const screenPos = this.camera.worldToScreen(player.x, player.y);
+    const isLocal = player.id === localPlayerId;
+
+    if (this.usePlaceholders) {
+      // Draw player as colored circle
+      const color = isLocal ? '#ffffff' : DIRECTION_COLORS[player.direction];
+      this.ctx.fillStyle = color;
+      this.ctx.beginPath();
+      this.ctx.arc(
+        screenPos.x + TILE_SIZE / 2,
+        screenPos.y + TILE_SIZE / 2,
+        TILE_SIZE / 2 - 4,
+        0,
+        Math.PI * 2
+      );
+      this.ctx.fill();
+
+      // Draw direction indicator
+      this.ctx.fillStyle = '#333';
+      const dirOffset = this.getDirectionOffset(player.direction);
+      this.ctx.beginPath();
+      this.ctx.arc(
+        screenPos.x + TILE_SIZE / 2 + dirOffset.x * 8,
+        screenPos.y + TILE_SIZE / 2 + dirOffset.y * 8,
+        4,
+        0,
+        Math.PI * 2
+      );
+      this.ctx.fill();
+
+      // Outline for local player
+      if (isLocal) {
+        this.ctx.strokeStyle = '#ffff00';
+        this.ctx.lineWidth = 2;
         this.ctx.beginPath();
         this.ctx.arc(
           screenPos.x + TILE_SIZE / 2,
           screenPos.y + TILE_SIZE / 2,
-          TILE_SIZE / 2 - 4,
+          TILE_SIZE / 2 - 2,
           0,
           Math.PI * 2
         );
-        this.ctx.fill();
-
-        // Draw direction indicator
-        this.ctx.fillStyle = '#333';
-        const dirOffset = this.getDirectionOffset(player.direction);
-        this.ctx.beginPath();
-        this.ctx.arc(
-          screenPos.x + TILE_SIZE / 2 + dirOffset.x * 8,
-          screenPos.y + TILE_SIZE / 2 + dirOffset.y * 8,
-          4,
-          0,
-          Math.PI * 2
-        );
-        this.ctx.fill();
-
-        // Outline for local player
-        if (isLocal) {
-          this.ctx.strokeStyle = '#ffff00';
-          this.ctx.lineWidth = 2;
-          this.ctx.beginPath();
-          this.ctx.arc(
-            screenPos.x + TILE_SIZE / 2,
-            screenPos.y + TILE_SIZE / 2,
-            TILE_SIZE / 2 - 2,
-            0,
-            Math.PI * 2
-          );
-          this.ctx.stroke();
-        }
-      } else {
-        // Draw sprite (when available)
-        const spriteId = player.spriteId;
-        this.spriteManager.drawSprite(
-          this.ctx,
-          'characters',
-          spriteId,
-          screenPos.x,
-          screenPos.y
-        );
+        this.ctx.stroke();
       }
-
-      // Draw player name
-      this.ctx.fillStyle = isLocal ? '#ffff00' : '#ffffff';
-      this.ctx.font = '12px Arial';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText(player.name, screenPos.x + TILE_SIZE / 2, screenPos.y - 5);
+    } else {
+      // Draw sprite (when available)
+      const spriteId = player.spriteId;
+      this.spriteManager.drawSprite(
+        this.ctx,
+        'characters',
+        spriteId,
+        screenPos.x,
+        screenPos.y
+      );
     }
+
+    // Draw player name
+    this.ctx.fillStyle = isLocal ? '#ffff00' : '#ffffff';
+    this.ctx.font = '12px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText(player.name, screenPos.x + TILE_SIZE / 2, screenPos.y - 5);
+  }
+
+  private renderMonster(monster: MonsterState, selectedTargetId: string | null): void {
+    const screenPos = this.camera.worldToScreen(monster.x, monster.y);
+    const isSelected = monster.id === selectedTargetId;
+
+    // Draw monster as colored square
+    const color = MONSTER_COLORS[monster.typeId] ?? '#888888';
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(
+      screenPos.x + 4,
+      screenPos.y + 4,
+      TILE_SIZE - 8,
+      TILE_SIZE - 8
+    );
+
+    // Draw selection indicator
+    if (isSelected) {
+      this.ctx.strokeStyle = '#ffff00';
+      this.ctx.lineWidth = 3;
+      this.ctx.strokeRect(
+        screenPos.x + 2,
+        screenPos.y + 2,
+        TILE_SIZE - 4,
+        TILE_SIZE - 4
+      );
+    }
+
+    // Draw health bar
+    const healthBarWidth = TILE_SIZE - 8;
+    const healthBarHeight = 4;
+    const healthPercent = monster.health / monster.maxHealth;
+
+    // Health bar background
+    this.ctx.fillStyle = '#333333';
+    this.ctx.fillRect(
+      screenPos.x + 4,
+      screenPos.y - 8,
+      healthBarWidth,
+      healthBarHeight
+    );
+
+    // Health bar fill
+    const healthColor = healthPercent > 0.5 ? '#4caf50' : healthPercent > 0.25 ? '#ff9800' : '#f44336';
+    this.ctx.fillStyle = healthColor;
+    this.ctx.fillRect(
+      screenPos.x + 4,
+      screenPos.y - 8,
+      healthBarWidth * healthPercent,
+      healthBarHeight
+    );
+
+    // Draw monster name
+    this.ctx.fillStyle = isSelected ? '#ffff00' : '#ffffff';
+    this.ctx.font = '10px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText(monster.name, screenPos.x + TILE_SIZE / 2, screenPos.y - 12);
   }
 
   private getDirectionOffset(direction: string): { x: number; y: number } {

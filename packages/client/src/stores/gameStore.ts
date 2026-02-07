@@ -10,6 +10,7 @@ interface GameStore {
   mapData: MapData | null;
   isConnected: boolean;
   isInGame: boolean;
+  selectedTargetId: string | null;
 
   // Actions
   setPlayerId: (id: string) => void;
@@ -20,12 +21,15 @@ interface GameStore {
   addPlayer: (player: PlayerState) => void;
   removePlayer: (playerId: string) => void;
   updatePlayer: (playerId: string, updates: Partial<PlayerState>) => void;
+  updateMonster: (monsterId: string, updates: Partial<MonsterState>) => void;
   setConnected: (connected: boolean) => void;
   setInGame: (inGame: boolean) => void;
+  setSelectedTarget: (targetId: string | null) => void;
   reset: () => void;
 
   // Selectors
   getLocalPlayer: () => PlayerState | undefined;
+  getSelectedMonster: () => MonsterState | undefined;
 }
 
 const initialState = {
@@ -36,6 +40,7 @@ const initialState = {
   mapData: null,
   isConnected: false,
   isInGame: false,
+  selectedTargetId: null,
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -64,13 +69,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ),
     })),
 
+  updateMonster: (monsterId, updates) =>
+    set((state) => ({
+      monsters: state.monsters.map((m) =>
+        m.id === monsterId ? { ...m, ...updates } : m
+      ),
+    })),
+
   setConnected: (connected) => set({ isConnected: connected }),
   setInGame: (inGame) => set({ isInGame: inGame }),
+  setSelectedTarget: (targetId) => set({ selectedTargetId: targetId }),
 
   reset: () => set(initialState),
 
   getLocalPlayer: () => {
     const { playerId, players } = get();
     return players.find((p) => p.id === playerId);
+  },
+
+  getSelectedMonster: () => {
+    const { selectedTargetId, monsters } = get();
+    if (!selectedTargetId) return undefined;
+    return monsters.find((m) => m.id === selectedTargetId);
   },
 }));

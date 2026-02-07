@@ -41,4 +41,11 @@ export class Camera {
       y: Math.round(worldY - this.y),
     };
   }
+
+  screenToWorld(screenX: number, screenY: number) {
+    return {
+      x: screenX + this.x,
+      y: screenY + this.y,
+    };
+  }
 }
