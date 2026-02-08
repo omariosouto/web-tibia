@@ -59,6 +59,17 @@ export function setupSocketEvents(io: GameServer, gameState: GameState) {
       }
 
       const result = gameState.attackMonster(socket.id, validated.data.targetId);
+
+      // If player moved to chase target, broadcast the movement
+      if (result.outOfRange && result.playerMoved) {
+        io.emit('player:moved', {
+          id: result.playerMoved.id,
+          x: result.playerMoved.x,
+          y: result.playerMoved.y,
+          direction: result.playerMoved.direction,
+        });
+      }
+
       if (result.success && result.damageEvent) {
         // Broadcast damage to all players
         io.emit('combat:damage', result.damageEvent);
@@ -67,8 +78,6 @@ export function setupSocketEvents(io: GameServer, gameState: GameState) {
         if (result.monsterDied) {
           io.emit('monster:died', { monsterId: validated.data.targetId });
         }
-      } else if (result.error) {
-        socket.emit('error', result.error);
       }
     });
 
@@ -95,4 +104,19 @@ export function setupSocketEvents(io: GameServer, gameState: GameState) {
       timestamp: Date.now(),
     });
   }, 100); // 10 updates per second
+
+  // Monster AI tick - monsters attack nearby players
+  setInterval(() => {
+    const attacks = gameState.tickMonsterAI();
+    for (const attack of attacks) {
+      // Broadcast monster attacks to all players
+      io.emit('combat:damage', {
+        attackerId: attack.attackerId,
+        targetId: attack.targetId,
+        damage: attack.damage,
+        targetHealth: attack.targetHealth,
+        targetMaxHealth: attack.targetMaxHealth,
+      });
+    }
+  }, 500); // Monster AI runs every 500ms
 }

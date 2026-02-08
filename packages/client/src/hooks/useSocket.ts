@@ -89,9 +89,20 @@ export function useSocket() {
 
     socket.on('combat:damage', (event) => {
       console.log('Damage dealt:', event);
-      updateMonster(event.targetId, {
-        health: event.targetHealth,
-      });
+      // Check if target is a monster or player
+      const currentMonsters = useGameStore.getState().monsters;
+      const isMonster = currentMonsters.some((m) => m.id === event.targetId);
+
+      if (isMonster) {
+        updateMonster(event.targetId, {
+          health: event.targetHealth,
+        });
+      } else {
+        // Target is a player
+        updatePlayer(event.targetId, {
+          health: event.targetHealth,
+        });
+      }
     });
 
     socket.on('monster:died', ({ monsterId }) => {

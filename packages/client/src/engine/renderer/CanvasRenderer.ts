@@ -6,28 +6,29 @@ import { Camera } from './Camera';
 // Map our tile IDs to Tibia sprite IDs (global IDs across all sheets)
 // Each sheet has 144 sprites (12x12), so sheet N starts at N*144
 const TILE_SPRITE_MAP: Record<number, number> = {
-  0: 102, // Grass (Sprites-0, position 102)
-  1: 103, // Grass with tree/dark (Sprites-0)
+  0: 102, // Grass (Sprites-0, row 8, col 6)
+  1: 8 * 144 + 0 * 12 + 0, // Tree (Sprites-8, row 0, col 0)
   2: 106, // Dirt (Sprites-0)
   3: 134, // Stone wall (Sprites-0)
   4: 128, // Water (Sprites-0)
   5: 106, // Sand/dirt variant
 };
 
-// Monster sprite IDs (global IDs)
-// Sprites-5 starts at 720, Sprites-6 at 864, Sprites-7 at 1008
+// Monster sprite IDs - using actual creature sprites from Tibia
+// Each sheet = 144 sprites, position = sheet*144 + row*12 + col
 const MONSTER_SPRITE_MAP: Record<number, number> = {
-  1: 1008 + 72, // Rat - small creature from Sprites-7
-  2: 720 + 108, // Snake/Wolf from Sprites-5
-  3: 720 + 48, // Spider/Orc from Sprites-5
+  1: 7 * 144 + 4 * 12 + 6, // Rat - Sprites-7, row 4, col 6 (small gray creature)
+  2: 6 * 144 + 2 * 12 + 2, // Snake - Sprites-6, row 2, col 2 (serpent)
+  3: 14 * 144 + 1 * 12 + 1, // Spider - Sprites-14, row 1, col 1
 };
 
-// Player sprite IDs based on direction (using orc sprites from Sprites-5)
+// Player sprite IDs based on direction
+// Using humanoid characters from Sprites-10 (row 1 = dwarves/characters)
 const PLAYER_SPRITE_MAP: Record<string, number> = {
-  north: 720 + 48, // Orc facing north
-  south: 720 + 52, // Orc facing south
-  east: 720 + 54, // Orc facing east
-  west: 720 + 50, // Orc facing west
+  south: 10 * 144 + 1 * 12 + 0, // Facing south
+  north: 10 * 144 + 1 * 12 + 4, // Facing north
+  east: 10 * 144 + 1 * 12 + 6, // Facing east
+  west: 10 * 144 + 1 * 12 + 2, // Facing west
 };
 
 export class CanvasRenderer {

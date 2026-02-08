@@ -90,4 +90,8 @@ export class CombatSystem {
     const remaining = ATTACK_COOLDOWN - (Date.now() - lastAttack);
     return Math.max(0, remaining);
   }
+
+  setCooldown(attackerId: string): void {
+    this.attackCooldowns.set(attackerId, Date.now());
+  }
 }

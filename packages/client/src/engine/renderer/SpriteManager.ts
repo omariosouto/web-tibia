@@ -101,7 +101,7 @@ export class SpriteManager {
   async loadAllTibiaSprites(): Promise<void> {
     if (this.allLoaded) return;
 
-    const sheetCount = 9; // Sprites-0 to Sprites-8
+    const sheetCount = 23; // Sprites-0 to Sprites-22
     const promises: Promise<SpriteSheet>[] = [];
 
     for (let i = 0; i < sheetCount; i++) {

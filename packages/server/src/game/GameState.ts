@@ -16,6 +16,16 @@ interface AttackResult {
   damageEvent?: DamageEvent;
   monsterDied?: boolean;
   error?: string;
+  outOfRange?: boolean;
+  playerMoved?: Player;
+}
+
+interface MonsterAttackResult {
+  attackerId: string;
+  targetId: string;
+  damage: number;
+  targetHealth: number;
+  targetMaxHealth: number;
 }
 
 // Monster spawn configuration
@@ -155,6 +165,17 @@ export class GameState {
 
     const result = this.combatSystem.attack(player, monster);
 
+    // If out of range, move player toward monster
+    if (!result.success && result.error === 'Target out of range') {
+      const moved = this.movePlayerToward(player, monster.x, monster.y);
+      return {
+        success: false,
+        error: result.error,
+        outOfRange: true,
+        playerMoved: moved ? player : undefined,
+      };
+    }
+
     if (!result.success) {
       return { success: false, error: result.error };
     }
@@ -180,5 +201,117 @@ export class GameState {
       damageEvent,
       monsterDied: result.targetDied,
     };
+  }
+
+  // Move player one tile toward target position
+  private movePlayerToward(player: Player, targetX: number, targetY: number): boolean {
+    const dx = targetX - player.x;
+    const dy = targetY - player.y;
+
+    // Determine primary direction to move
+    let direction: Direction;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      direction = dx > 0 ? 'east' : 'west';
+    } else {
+      direction = dy > 0 ? 'south' : 'north';
+    }
+
+    const newPos = this.calculateNewPosition(player, direction);
+    player.direction = direction;
+
+    if (this.world.isWalkable(newPos.x, newPos.y)) {
+      player.x = newPos.x;
+      player.y = newPos.y;
+      return true;
+    }
+
+    // Try alternate direction if primary is blocked
+    const altDirection: Direction = Math.abs(dx) > Math.abs(dy)
+      ? (dy > 0 ? 'south' : 'north')
+      : (dx > 0 ? 'east' : 'west');
+
+    const altPos = this.calculateNewPosition(player, altDirection);
+    if (this.world.isWalkable(altPos.x, altPos.y)) {
+      player.direction = altDirection;
+      player.x = altPos.x;
+      player.y = altPos.y;
+      return true;
+    }
+
+    return false;
+  }
+
+  // Monster AI tick - monsters attack nearby players
+  tickMonsterAI(): MonsterAttackResult[] {
+    const results: MonsterAttackResult[] = [];
+    const players = Array.from(this.players.values());
+
+    for (const monster of this.monsters.values()) {
+      if (!monster.isAlive) continue;
+
+      // Find closest player within aggro range (3 tiles)
+      const aggroRange = TILE_SIZE * 3;
+      let closestPlayer: Player | null = null;
+      let closestDistance = Infinity;
+
+      for (const player of players) {
+        const dist = Math.sqrt(
+          Math.pow(player.x - monster.x, 2) + Math.pow(player.y - monster.y, 2)
+        );
+        if (dist < aggroRange && dist < closestDistance) {
+          closestDistance = dist;
+          closestPlayer = player;
+        }
+      }
+
+      if (!closestPlayer) continue;
+
+      // Try to attack if in range
+      const attackRange = TILE_SIZE * 1.5;
+      if (closestDistance <= attackRange) {
+        // Attack the player
+        if (this.combatSystem.canAttack(monster.id)) {
+          const damage = Math.floor(monster.damage * (0.8 + Math.random() * 0.4));
+          // Apply damage to player
+          closestPlayer.health = Math.max(0, closestPlayer.health - damage);
+          results.push({
+            attackerId: monster.id,
+            targetId: closestPlayer.id,
+            damage,
+            targetHealth: closestPlayer.health,
+            targetMaxHealth: closestPlayer.maxHealth,
+          });
+          this.combatSystem.setCooldown(monster.id);
+        }
+      } else {
+        // Move toward player
+        this.moveMonsterToward(monster, closestPlayer.x, closestPlayer.y);
+      }
+    }
+
+    return results;
+  }
+
+  private moveMonsterToward(monster: Monster, targetX: number, targetY: number): void {
+    const dx = targetX - monster.x;
+    const dy = targetY - monster.y;
+
+    // Determine direction to move
+    let newX = monster.x;
+    let newY = monster.y;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      newX += dx > 0 ? TILE_SIZE : -TILE_SIZE;
+      monster.direction = dx > 0 ? 'east' : 'west';
+    } else if (dy !== 0) {
+      newY += dy > 0 ? TILE_SIZE : -TILE_SIZE;
+      monster.direction = dy > 0 ? 'south' : 'north';
+    }
+
+    // Check if new position is walkable
+    if (this.world.isWalkable(newX, newY)) {
+      monster.x = newX;
+      monster.y = newY;
+    }
   }
 }

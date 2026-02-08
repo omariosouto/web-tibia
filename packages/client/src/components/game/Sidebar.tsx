@@ -1,7 +1,7 @@
 import { useGameStore } from '../../stores/gameStore';
 
 export function Sidebar() {
-  const { players, monsters, playerId, playerName, selectedTargetId, getSelectedMonster } =
+  const { players, monsters, playerId, playerName, selectedTargetId, setSelectedTarget, getSelectedMonster } =
     useGameStore();
   const localPlayer = players.find((p) => p.id === playerId);
   const selectedMonster = getSelectedMonster();
@@ -28,7 +28,9 @@ export function Sidebar() {
             </div>
             <div className="flex justify-between">
               <span className="text-[#888]">HP:</span>
-              <span className="text-[#4caf50]">100/100</span>
+              <span className={localPlayer.health > 50 ? 'text-[#4caf50]' : localPlayer.health > 25 ? 'text-[#ff9800]' : 'text-[#f44336]'}>
+                {localPlayer.health}/{localPlayer.maxHealth}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-[#888]">MP:</span>
@@ -50,6 +52,14 @@ export function Sidebar() {
             .map((monster) => (
               <div
                 key={monster.id}
+                onClick={() => {
+                  // Toggle selection - clicking same target deselects (stops attacking)
+                  if (selectedTargetId === monster.id) {
+                    setSelectedTarget(null);
+                  } else {
+                    setSelectedTarget(monster.id);
+                  }
+                }}
                 className={`flex items-center gap-1 p-1 rounded cursor-pointer hover:bg-[#3d3d5c] ${
                   monster.id === selectedTargetId ? 'bg-[#4a3030] border border-red-500' : ''
                 }`}
