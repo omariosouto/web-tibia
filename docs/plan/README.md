@@ -23,7 +23,7 @@ Este documento descreve o plano completo para criar um MMORPG online inspirado n
 | Validação | Zod |
 | Data Fetching | React Query |
 | Testes | Vitest, Playwright |
-| Monorepo | Turborepo, pnpm workspaces |
+| Monorepo | Turborepo, npm workspaces |
 | Infra | Docker, Docker Compose |
 
 ## MVP Scope

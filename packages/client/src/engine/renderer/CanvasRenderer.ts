@@ -15,20 +15,20 @@ const TILE_SPRITE_MAP: Record<number, number> = {
 };
 
 // Monster sprite IDs - using actual creature sprites from Tibia
-// Each sheet = 144 sprites, position = sheet*144 + row*12 + col
+// Each sheet = 144 sprites (12x12), position = sheet*144 + row*12 + col
 const MONSTER_SPRITE_MAP: Record<number, number> = {
-  1: 7 * 144 + 4 * 12 + 6, // Rat - Sprites-7, row 4, col 6 (small gray creature)
-  2: 6 * 144 + 2 * 12 + 2, // Snake - Sprites-6, row 2, col 2 (serpent)
-  3: 14 * 144 + 1 * 12 + 1, // Spider - Sprites-14, row 1, col 1
+  1: 6 * 144 + 0 * 12 + 0, // Rat - Sprites-6, row 0, col 0 (gray rat)
+  2: 5 * 144 + 0 * 12 + 0, // Snake - Sprites-5, row 0, col 0 (green snake)
+  3: 14 * 144 + 1 * 12 + 4, // Spider - Sprites-14, row 1, col 4 (brown tarantula)
 };
 
 // Player sprite IDs based on direction
-// Using humanoid characters from Sprites-10 (row 1 = dwarves/characters)
+// Using ghost/mage characters from Sprites-16, row 3 (magical blue ghosts)
 const PLAYER_SPRITE_MAP: Record<string, number> = {
-  south: 10 * 144 + 1 * 12 + 0, // Facing south
-  north: 10 * 144 + 1 * 12 + 4, // Facing north
-  east: 10 * 144 + 1 * 12 + 6, // Facing east
-  west: 10 * 144 + 1 * 12 + 2, // Facing west
+  south: 16 * 144 + 3 * 12 + 0, // Facing south
+  north: 16 * 144 + 3 * 12 + 6, // Facing north
+  east: 16 * 144 + 3 * 12 + 9, // Facing east
+  west: 16 * 144 + 3 * 12 + 3, // Facing west
 };
 
 export class CanvasRenderer {
