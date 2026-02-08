@@ -62,15 +62,16 @@ export function GameHUD() {
               </span>
             </div>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Press SPACE to attack</p>
+          <p className="text-xs text-green-400 mt-2">Auto-attacking...</p>
+          <p className="text-xs text-gray-400">Click target or ESC to stop</p>
         </div>
       )}
 
       {/* Controls Help */}
       <div className="bg-gray-800/90 rounded-lg p-3 text-gray-400 text-xs">
         <p>Arrow keys / WASD to move</p>
-        <p>Click monster to select</p>
-        <p>SPACE or double-click to attack</p>
+        <p>Click monster to attack</p>
+        <p>Click again or ESC to stop</p>
       </div>
     </div>
   );

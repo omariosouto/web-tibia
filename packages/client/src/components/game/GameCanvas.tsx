@@ -28,6 +28,11 @@ export function GameCanvas() {
     const renderer = new CanvasRenderer(canvas, spriteManager);
     rendererRef.current = renderer;
 
+    // Load Tibia sprites
+    spriteManager.loadAllTibiaSprites().then(() => {
+      console.log('Tibia sprites loaded');
+    });
+
     // Initialize keyboard handler
     const keyboard = new KeyboardHandler((direction) => {
       move(direction);
@@ -89,32 +94,60 @@ export function GameCanvas() {
 
       if (clickedMonster) {
         if (selectedTargetId === clickedMonster.id) {
-          // Already selected - attack!
-          attack(clickedMonster.id);
+          // Already selected - deselect (stop attacking)
+          setSelectedTarget(null);
         } else {
-          // Select the monster
+          // Select the monster (auto-attack starts automatically)
           setSelectedTarget(clickedMonster.id);
         }
       } else {
-        // Clicked on empty space - deselect
+        // Clicked on empty space - deselect (stop attacking)
         setSelectedTarget(null);
       }
     },
     [monsters, selectedTargetId, attack, setSelectedTarget]
   );
 
-  // Handle space key for attack
+  // Auto-attack when target is selected (Tibia-style)
+  useEffect(() => {
+    if (!selectedTargetId) return;
+
+    // Check if target is still alive
+    const target = monsters.find((m) => m.id === selectedTargetId);
+    if (!target || !target.isAlive) {
+      setSelectedTarget(null);
+      return;
+    }
+
+    // Attack immediately when selecting
+    attack(selectedTargetId);
+
+    // Then continue attacking every 1 second (matching server cooldown)
+    const attackInterval = setInterval(() => {
+      const currentTarget = useGameStore.getState().selectedTargetId;
+      const currentMonsters = useGameStore.getState().monsters;
+      const monster = currentMonsters.find((m) => m.id === currentTarget);
+
+      if (currentTarget && monster?.isAlive) {
+        attack(currentTarget);
+      }
+    }, 1000);
+
+    return () => clearInterval(attackInterval);
+  }, [selectedTargetId, attack, monsters, setSelectedTarget]);
+
+  // Handle Escape key to stop attacking (deselect target)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Space' && selectedTargetId) {
+      if (event.code === 'Escape' && selectedTargetId) {
         event.preventDefault();
-        attack(selectedTargetId);
+        setSelectedTarget(null);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTargetId, attack]);
+  }, [selectedTargetId, setSelectedTarget]);
 
   return (
     <canvas

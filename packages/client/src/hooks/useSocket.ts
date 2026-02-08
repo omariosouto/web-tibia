@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useGameStore } from '../stores/gameStore';
 import type {
@@ -11,8 +11,18 @@ type GameSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 const SOCKET_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 
+// Singleton socket instance
+let socket: GameSocket | null = null;
+let isInitialized = false;
+
+function getSocket(): GameSocket {
+  if (!socket) {
+    socket = io(SOCKET_URL);
+  }
+  return socket;
+}
+
 export function useSocket() {
-  const socketRef = useRef<GameSocket | null>(null);
   const {
     setPlayers,
     setPlayerId,
@@ -28,8 +38,11 @@ export function useSocket() {
   } = useGameStore();
 
   useEffect(() => {
-    const socket: GameSocket = io(SOCKET_URL);
-    socketRef.current = socket;
+    // Only initialize event listeners once
+    if (isInitialized) return;
+    isInitialized = true;
+
+    const socket = getSocket();
 
     socket.on('connect', () => {
       console.log('Connected to server');
@@ -103,25 +116,35 @@ export function useSocket() {
       console.error('Socket error:', message);
     });
 
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
+    // Don't disconnect on cleanup - keep connection alive
+  }, [
+    setPlayers,
+    setPlayerId,
+    setMapData,
+    setMonsters,
+    addPlayer,
+    removePlayer,
+    updatePlayer,
+    updateMonster,
+    setConnected,
+    setInGame,
+    setSelectedTarget,
+  ]);
 
   const joinGame = useCallback((name: string) => {
-    socketRef.current?.emit('player:join', { name });
+    getSocket().emit('player:join', { name });
   }, []);
 
   const move = useCallback((direction: Direction) => {
-    socketRef.current?.emit('player:move', {
+    getSocket().emit('player:move', {
       direction,
       timestamp: Date.now(),
     });
   }, []);
 
   const attack = useCallback((targetId: string) => {
-    socketRef.current?.emit('combat:attack', { targetId });
+    getSocket().emit('combat:attack', { targetId });
   }, []);
 
-  return { joinGame, move, attack, socket: socketRef.current };
+  return { joinGame, move, attack, socket: getSocket() };
 }
