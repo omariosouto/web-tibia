@@ -28,6 +28,11 @@ export function GameCanvas() {
     const renderer = new CanvasRenderer(canvas, spriteManager);
     rendererRef.current = renderer;
 
+    // Load Tibia sprites
+    spriteManager.loadAllTibiaSprites().then(() => {
+      console.log('Tibia sprites loaded');
+    });
+
     // Initialize keyboard handler
     const keyboard = new KeyboardHandler((direction) => {
       move(direction);

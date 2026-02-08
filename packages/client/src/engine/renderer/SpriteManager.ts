@@ -6,9 +6,31 @@ export interface SpriteSheet {
   rows: number;
 }
 
+// Tibia sprite sheets are 12x12 grids of 32x32 sprites
+const SPRITES_PER_SHEET = 144; // 12 * 12
+
+// Sprite ID mappings for common tiles
+export const SPRITE_IDS = {
+  // Ground tiles (from Sprites-0)
+  GRASS: 102,
+  GRASS_EDGE_N: 103,
+  GRASS_EDGE_S: 115,
+  GRASS_EDGE_W: 114,
+  GRASS_EDGE_E: 116,
+  DIRT: 106,
+  STONE: 134,
+  WATER: 128,
+
+  // Creatures (from Sprites-5/6/7)
+  RAT: 720 + 72, // Sprites-5, row 6
+  WOLF: 720 + 108, // Sprites-5, row 9
+  ORC: 720 + 48, // Sprites-5, row 4
+};
+
 export class SpriteManager {
   private spriteSheets: Map<string, SpriteSheet> = new Map();
   private loadPromises: Map<string, Promise<SpriteSheet>> = new Map();
+  private allLoaded = false;
 
   async loadSpriteSheet(
     name: string,
@@ -74,5 +96,43 @@ export class SpriteManager {
 
   isLoaded(name: string): boolean {
     return this.spriteSheets.has(name);
+  }
+
+  async loadAllTibiaSprites(): Promise<void> {
+    if (this.allLoaded) return;
+
+    const sheetCount = 9; // Sprites-0 to Sprites-8
+    const promises: Promise<SpriteSheet>[] = [];
+
+    for (let i = 0; i < sheetCount; i++) {
+      promises.push(
+        this.loadSpriteSheet(`sprites-${i}`, `/sprites/Sprites-${i}.png`, 32, 32)
+      );
+    }
+
+    await Promise.all(promises);
+    this.allLoaded = true;
+  }
+
+  isAllLoaded(): boolean {
+    return this.allLoaded;
+  }
+
+  // Draw sprite by global ID (spans across multiple sheets)
+  drawSpriteById(
+    ctx: CanvasRenderingContext2D,
+    globalSpriteId: number,
+    x: number,
+    y: number,
+    width?: number,
+    height?: number
+  ): void {
+    const sheetIndex = Math.floor(globalSpriteId / SPRITES_PER_SHEET);
+    const localSpriteId = globalSpriteId % SPRITES_PER_SHEET;
+    const sheetName = `sprites-${sheetIndex}`;
+
+    if (!this.spriteSheets.has(sheetName)) return;
+
+    this.drawSprite(ctx, sheetName, localSpriteId, x, y, width, height);
   }
 }
